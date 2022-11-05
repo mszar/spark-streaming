@@ -23,6 +23,9 @@ object Playground extends App {
     .master("local[2]")
     .getOrCreate()
 
+  spark.sparkContext.setLogLevel("WARN")
+
+
   /**
     * The SparkContext (usually denoted `sc` in code) is the entry point for low-level Spark APIs, including access to Resilient Distributed Datasets (RDDs).
     */
