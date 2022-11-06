@@ -51,11 +51,37 @@ object StreamingJoins {
 
   }
 
+  def joinSteamWithStream() = {
+    val streamedBandDF = spark.readStream
+      .format("socket")
+      .option("host", "localhost")
+      .option("port", 12345)
+      .load()
+      .select(from_json(col("value"), bandsSchema).as("band"))
+      .selectExpr("band.id as id", "band.name as name", "band.hometown as hometown", "band.year as year")
 
+    val streamedGuitaristDF = spark.readStream
+      .format("socket")
+      .option("host", "localhost")
+      .option("port", 12346)
+      .load()
+      .select(from_json(col("value"), guitarPlayers.schema).as("guitarPlayers"))
+      .selectExpr("guitarPlayers.id as id", "guitarPlayers.name as name", "guitarPlayers.guitars as guitars", "guitarPlayers.band as band")
+
+    val streamedJoin = streamedBandDF.join(streamedGuitaristDF, streamedGuitaristDF.col("band") === streamedBandDF.col("id"))
+
+    streamedJoin.writeStream
+      .format("console")
+      .outputMode("append")
+      .start()
+      .awaitTermination()
+
+
+  }
 
 
 
   def main(args: Array[String]): Unit = {
-    joinStreamWithStatic()
+    joinSteamWithStream()
   }
 }
