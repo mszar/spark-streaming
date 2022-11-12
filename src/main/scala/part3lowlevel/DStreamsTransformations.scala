@@ -3,8 +3,11 @@ package part3lowlevel
 import common.Person
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.streaming.dstream.DStream
+
 import java.sql.Date
 import org.apache.spark.streaming.{Seconds, StreamingContext}
+
+import java.time.{LocalDate, Period}
 
 object DStreamsTransformations {
 
@@ -35,13 +38,18 @@ object DStreamsTransformations {
 
   // map, flatMap, filter
 
-  // def peopleAges() = readPeople().map {
-
+  def peopleAges(): DStream[(String, Int)] = readPeople().map { person =>
+    val age = Period.between(person.birthDate.toLocalDate, LocalDate.now()).getYears
+    (s"${person.firstName} ${person.lastName}", age)
   }
 
 
+  def peopleSmallNames(): DStream[String] = readPeople().flatMap { person =>
+    List(person.firstName, person.middleName)
+  }
+
   def main(args: Array[String]): Unit = {
-    val stream = readPeople()
+    val stream = peopleSmallNames()
     stream.print()
     ssc.start()
     ssc.awaitTermination()
