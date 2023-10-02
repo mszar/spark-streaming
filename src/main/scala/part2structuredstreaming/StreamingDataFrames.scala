@@ -3,6 +3,8 @@ package part2structuredstreaming
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import common._
+import org.apache.spark.sql.streaming.Trigger
+import scala.concurrent.duration._
 
 object StreamingDataFrames {
 
@@ -50,11 +52,28 @@ object StreamingDataFrames {
 
   }
 
+def demoTriggers() = {
+  val lines = spark.readStream
+    .format("socket")
+    .option("host", "localhost")
+    .option("port", 12345)
+    .load()
 
+  lines.writeStream
+    .format("console")
+    .outputMode("append")
+    .trigger(
+//      Trigger.ProcessingTime(2.seconds)
+//      Trigger.Once()
+    Trigger.Continuous(2.seconds)
+    )
+    .start()
+    .awaitTermination()
+}
 
 
   def main(args: Array[String]): Unit = {
-    readFromFiles()
+    demoTriggers()
   }
 
 }
