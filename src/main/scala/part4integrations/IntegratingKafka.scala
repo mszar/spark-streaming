@@ -1,6 +1,8 @@
 package part4integrations
 
+import common._
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{col, expr, struct, to_json}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 object IntegratingKafka {
@@ -18,7 +20,9 @@ object IntegratingKafka {
       .option("subscribe", "rockthejvm")
       .load()
 
-    kafkaDF.writeStream
+    kafkaDF
+      .select(col("topic"), expr("cast(value as string) as actualValue"))
+      .writeStream
       .format("console")
       .outputMode("append")
       .start()
@@ -26,8 +30,46 @@ object IntegratingKafka {
 
   }
 
+  def writeToKafka() = {
+    val carsDF = spark.readStream
+      .schema(carsSchema)
+      .json("src/main/resources/data/cars")
+
+    val carsKafkaDF = carsDF.selectExpr("upper(Name) as key", "Name as value")
+
+    carsKafkaDF.writeStream
+      .format("kafka")
+      .option("kafka.bootstrap.servers", "localhost:9092")
+      .option("topic", "rockthejvm")
+      .option("checkpointLocation", "checkpoints")
+      .start()
+      .awaitTermination()
+
+  }
+
+  def writeCarsToKafka() = {
+    val carsDF = spark.readStream
+      .schema(carsSchema)
+      .json("src/main/resources/data/cars")
+
+    val carsJsonKafkaDF = carsDF.select(
+      col("Name").as("key"),
+      to_json(struct(col("Name"), col("Horsepower"), col("Origin"))).cast("String").as("value")
+    )
+    carsJsonKafkaDF.writeStream
+      .format("kafka")
+      .option("kafka.bootstrap.servers", "localhost:9092")
+      .option("topic", "rockthejvm")
+      .option("checkpointLocation", "checkpoints")
+      .start()
+      .awaitTermination()
+
+  }
+
   def main(args: Array[String]): Unit = {
-    readFromKafka()
+//    readFromKafka()
+//    writeToKafka()
+    writeCarsToKafka()
   }
 
 }
